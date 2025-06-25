@@ -151,6 +151,62 @@ def get_recent_instructor_updates(term_id, recency_cutoff):
 def get_term_courses(term_id):
     return f"""
         SELECT DISTINCT
+            TO_CHAR(CLASS_NBR) AS section_id,
+            STRM AS term_id,
+            SESSION_CODE AS session_id,
+            SUBJECT AS dept_name,
+            SUBJECT AS dept_code,
+            ACAD_CAREER AS course_career_code,
+            SCHEDULE_PRINT AS print_in_schedule_of_classes,
+            CASE WHEN PRIMARY_FLAG = 'Y' THEN 'true' ELSE 'false' END AS primary,
+            SSR_COMPONENT as instruction_format,
+            TO_CHAR(CLASS_NBR_1) as primary_associated_section_id,
+            TRIM(DISPLAY_NAME) AS display_name,
+            CLASS_SECTION AS section_num,
+            CATALOG_NBR AS catalog_id,
+            regexp_replace(trim(CATALOG_NBR), '[A-Za-z]') AS catalog_root,
+            REPLACE(SUBSTR(REPLACE(trim(CATALOG_NBR),regexp_replace(trim(CATALOG_NBR), '[A-Za-z]'),'|'),1,1),'|','') AS catalog_prefix,
+            SUBSTR(REPLACE(trim(CATALOG_NBR),regexp_replace(trim(CATALOG_NBR), '[A-Za-z]'),'|'),instr(REPLACE(trim(CATALOG_NBR),regexp_replace(trim(CATALOG_NBR), '[A-Za-z]'),'|'),'|')+1) AS catalog_suffix,
+            EFFDT AS course_updated_date,
+            CRSE_ID as course_id,
+            CRSE_OFFER_NBR as course_offer_nbr,
+            ENRL_TOT AS enrollment_count,
+            ENRL_CAP AS enroll_limit,
+            WAIT_CAP AS waitlist_limit,
+            START_DT AS start_date,
+            END_DT AS end_date,
+            CAMPUS_ID AS instructor_uid,
+            TRIM(
+                TRIM(NAME_PREFIX) || ' ' ||
+                TRIM(FIRST_NAME) || ' ' ||
+                TRIM(MIDDLE_NAME) || NVL2(TRIM(MIDDLE_NAME), ' ', '') ||
+                TRIM(LAST_NAME) || ' ' ||
+                TRIM(NAME_SUFFIX)
+            ) AS instructor_name,
+            INSTR_ROLE AS instructor_role_code,
+            DESCR AS location,
+            CASE WHEN MON = 'Y' THEN 'MO' END ||
+                CASE WHEN TUES = 'Y' THEN 'TU' END ||
+                CASE WHEN WED = 'Y' THEN 'WE' END ||
+                CASE WHEN THURS = 'Y' THEN 'TH' END ||
+                CASE WHEN FRI = 'Y' THEN 'FR' END ||
+                CASE WHEN SAT = 'Y' THEN 'SA' END ||
+                CASE WHEN SUN = 'Y' THEN 'SU' END
+            AS meeting_days,
+            TO_CHAR(MEETING_TIME_START,'HH24:MI') AS meeting_start_time,
+            TO_CHAR(MEETING_TIME_END,'HH24:MI') AS meeting_end_time,
+            START_DATE AS meeting_start_date,
+            END_DATE AS meeting_end_date,
+            COURSE_TITLE_LONG AS course_title,
+            COURSE_TITLE AS course_title_short,
+            INSTRUCTION_MODE AS instruction_mode
+        FROM SISEDO.BCOURSESV00_VW
+        WHERE STRM = '{term_id}'"""
+
+
+def get_term_courses_deprecated(term_id):
+    return f"""
+        SELECT DISTINCT
             sec."id" AS section_id,
             sec."term-id" AS term_id,
             sec."session-id" AS session_id,

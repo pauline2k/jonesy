@@ -56,6 +56,12 @@ class Job:
                 self.upload_query_results(
                     queries.get_term_courses(term_id),
                     f'sis-data/{daily_path}/courses/courses-{term_id}.gz',
+                    targets='la-nessie-dev,la-nessie-qa'
+                )
+                self.upload_query_results(
+                    queries.get_term_courses_deprecated(term_id),
+                    f'sis-data/{daily_path}/courses/courses-{term_id}.gz',
+                    targets='la-nessie-prod'
                 )
                 self.upload_batched_query_results(
                     queries.get_term_enrollments(term_id),
@@ -113,12 +119,15 @@ class Job:
 
             self.upload_data(results_tempfile, s3_key)
 
-    def upload_data(self, data, s3_key):
-        if 'TARGETS' not in self.config:
-            print('No S3 targets specified, aborting')
-            exit()
+    def upload_data(self, data, s3_key, targets=None):
+        if not targets:
+            if 'TARGETS' in self.config:
+                targets = self.config['TARGETS']
+            else:
+                print('No S3 targets specified, aborting')
+                exit()
         client = self.get_client()
-        for bucket in self.config['TARGETS'].split(','):
+        for bucket in targets.split(','):
             try:
                 data.seek(0)
                 client.put_object(Bucket=bucket, Key=s3_key, Body=data, ServerSideEncryption='AES256')
@@ -128,7 +137,7 @@ class Job:
             print(f'S3 upload complete: bucket={bucket}, key={s3_key}')
         return True
 
-    def upload_query_results(self, sql, s3_key):
+    def upload_query_results(self, sql, s3_key, targets=None):
         with tempfile.TemporaryFile() as results_tempfile:
             results_gzipfile = gzip.GzipFile(mode='wb', fileobj=results_tempfile)
             with io.TextIOWrapper(results_gzipfile, encoding='utf-8', newline='\n') as outfile:
@@ -136,7 +145,7 @@ class Job:
                     _write_csv_rows(sisedo, sql, outfile)
             results_gzipfile.close()
 
-            self.upload_data(results_tempfile, s3_key)
+            self.upload_data(results_tempfile, s3_key, targets)
 
 
 def get_daily_path():
